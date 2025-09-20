@@ -1,4 +1,6 @@
+const { cloudinaryConnect } = require("../config/cloudinary");
 const File = require("../models/File");
+const cloudinary = require("cloudinary").v2;
 
 //localFileUpload -> handler function
 
@@ -25,5 +27,63 @@ exports.localFileUpload = async (req, res)=>{
      }catch(error){
         console.log("not able to upload file on server");
         console.log(error);
+     }
+}
+
+ function isFileTypeSupported(type,supportedTypes){
+    return supportedTypes.includes(type);
+ }
+
+  async function uploadFileToCloudinary(file, folder) {
+    const options = {folder};
+    // Return the promise from cloudinary upload
+    return await cloudinary.uploader.upload(file.tempFilePath, options);
+}
+
+//image upload ka handler
+exports.imageUpload = async (req, res) =>{
+     try{
+        //data fetch
+        const {name,tags, email} = req.body;
+        console.log(name,tags,email);
+
+        const file = req.files.imageFile;
+        console.log(file);
+
+        //validation
+        const supportedTypes = ["jpg","jpeg","png"]; 
+        const fileType = file.name.split('.')[1].toLowerCase();
+
+        if(!isFileTypeSupported(fileType, supportedTypes)){
+            return res.status(400).json({
+                success:false,
+                message:'File format is supported',
+            })
+        }
+
+        //file format supported hai
+        console.log("Uploading to codehelp");
+        const response = await uploadFileToCloudinary(file, "codehelp");
+         console.log(response);
+        //db me entry save krni hai
+        const fileData = await File.create({
+            name,
+            tags,
+            email,
+            imageUrl:response.secure_url,
+        })
+
+       res.json({
+         success:true,
+         imageUrl:response.secure_url,
+         message:"Image Successfully Uploaded",
+       })
+
+     }catch(error){
+         console.log(error);
+         res.status(400).json({
+            success:false,
+            message:"something went wrong"
+         })
      }
 }
